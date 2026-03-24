@@ -224,16 +224,39 @@ All outputs are written to:
 
 | Experiment | Best Model | Key Metric | Value |
 |------------|-----------|------------|-------|
-| Exp 1 — Clustering | K-Means (k=5) | Silhouette Score | ~0.42 |
-| Exp 3 — Data Cleaning | KNN Imputer | Downstream R² gain | +8% |
-| Exp 7 — Regression | LightGBM | RMSE (House Price) | ~$22,400 |
-| Exp 7 — Regression | XGBoost | R² (California) | ~0.84 |
+| Exp 1 — Clustering | K-Means (optimal k) | Silhouette Score | ~0.42 |
+| Exp 2 — Statistics | Logistic Regression | AUC-ROC (income) | ~0.88 |
+| Exp 3 — Data Cleaning | KNN Imputer | Post-cleaning quality score | ~72/100 |
+| Exp 4 — Visualization | — | Revenue trend slope | +$41K/month |
+| Exp 5 — Feature Engineering | Ridge (engineered) | R² improvement | 0.937 → 0.957 |
+| Exp 6 — Association Rules | Apriori (lift-ranked) | Average top-20 lift | 1.37× |
+| Exp 7 — Regression | LightGBM | R² (California Housing) | ~0.84 |
 | Exp 8 — Classification | LightGBM + SMOTE | AUC-ROC (Fraud) | ~0.98 |
-| Exp 8 — Classification | XGBoost | F1 (Churn) | ~0.82 |
-| Exp 9 — Forecasting | Prophet | MAPE (Stock) | ~3.2% |
-| Exp 10 — Gene Expression | SVM (RBF) | Accuracy (5-class) | ~0.91 |
+| Exp 9 — Forecasting | XGBoost (lag features) | MAPE (30-day ahead) | ~3.5% |
+| Exp 10 — Microarray | Random Forest | Accuracy (4-subtype) | ~95% |
 
-> Actual values will vary slightly due to random seeds and data generation; run the experiments to get exact figures.
+> Values are produced on synthetic/fallback datasets. Exact figures are saved to `outputs/metrics/expX_metrics.json` after running.
+
+---
+
+## Lab Records
+
+Detailed academic documentation for each experiment is in `docs/lab_records/`:
+
+| Experiment | Lab Record |
+|------------|------------|
+| Exp 1 — Clustering | [exp1_clustering.md](docs/lab_records/exp1_clustering.md) |
+| Exp 2 — Statistics | [exp2_statistics.md](docs/lab_records/exp2_statistics.md) |
+| Exp 3 — Data Cleaning | [exp3_data_cleaning.md](docs/lab_records/exp3_data_cleaning.md) |
+| Exp 4 — Visualization | [exp4_visualization.md](docs/lab_records/exp4_visualization.md) |
+| Exp 5 — Feature Engineering | [exp5_feature_engineering.md](docs/lab_records/exp5_feature_engineering.md) |
+| Exp 6 — Association Rules | [exp6_association_rules.md](docs/lab_records/exp6_association_rules.md) |
+| Exp 7 — Regression Models | [exp7_regression_models.md](docs/lab_records/exp7_regression_models.md) |
+| Exp 8 — Classification Models | [exp8_classification_models.md](docs/lab_records/exp8_classification_models.md) |
+| Exp 9 — Temporal Forecasting | [exp9_temporal_forecasting.md](docs/lab_records/exp9_temporal_forecasting.md) |
+| Exp 10 — Microarray Analysis | [exp10_microarray.md](docs/lab_records/exp10_microarray.md) |
+
+Cross-experiment prescriptive insights: [docs/insights/prescriptive_summary.md](docs/insights/prescriptive_summary.md)
 
 ---
 

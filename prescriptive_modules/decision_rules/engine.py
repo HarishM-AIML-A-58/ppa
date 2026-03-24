@@ -472,7 +472,9 @@ class DecisionRulesEngine:
             }
 
             if y is not None and covered > 0:
-                correct = int((y[mask].astype(str) == str(rule.prediction)).sum())
+                y_arr = np.array(y) if not isinstance(y, np.ndarray) else y
+                mask_arr = mask.values if hasattr(mask, 'values') else np.array(mask)
+                correct = int((y_arr[mask_arr].astype(str) == str(rule.prediction)).sum())
                 entry["empirical_accuracy"] = round(correct / covered, 4)
             else:
                 entry["empirical_accuracy"] = None
@@ -493,11 +495,11 @@ class DecisionRulesEngine:
 
         if y is not None:
             preds = self._apply_ruleset(X, rules)
-            valid_mask = preds != self.default_prediction
+            valid_mask = np.array(preds != self.default_prediction)
             if valid_mask.sum() > 0:
-                overall_accuracy = float(
-                    (preds[valid_mask].astype(str) == y[valid_mask].astype(str)).mean()
-                )
+                y_arr = np.array(y).astype(str)
+                p_arr = np.array(preds).astype(str)
+                overall_accuracy = float((p_arr[valid_mask] == y_arr[valid_mask]).mean())
             else:
                 overall_accuracy = 0.0
             result["overall_accuracy"] = round(overall_accuracy, 4)
