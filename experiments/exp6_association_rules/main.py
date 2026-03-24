@@ -407,10 +407,16 @@ def main():
     df = generate_online_retail(n_rows=500_000)
     df, basket = preprocess(df)
 
+    # Sample basket to avoid memory issues with large matrices
+    MAX_INVOICES = 20_000
+    if len(basket) > MAX_INVOICES:
+        basket = basket.sample(n=MAX_INVOICES, random_state=42)
+        print(f"[Apriori] Sampled basket to {MAX_INVOICES:,} invoices for memory efficiency")
+
     # ── Predictive ────────────────────────────────────────────────────
     print("\n[Predictive] Running Apriori …")
     frequent_itemsets, rules = run_apriori(basket,
-                                           min_support=0.01,
+                                           min_support=0.05,
                                            min_confidence=0.3,
                                            min_lift=1.2)
 

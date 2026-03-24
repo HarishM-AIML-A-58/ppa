@@ -64,11 +64,28 @@ for d in [PLOT_DIR, METRIC_DIR]:
 # ── 1. Data Loading & Enrichment ──────────────────────────────────────────────
 
 def load_data(seed: int = 42) -> pd.DataFrame:
-    """Load California Housing and add synthetic features."""
-    raw    = fetch_california_housing(as_frame=True)
-    df     = raw.frame.copy()
-    rng    = np.random.default_rng(seed)
-    n      = len(df)
+    """Load California Housing (or generate synthetic fallback) and add features."""
+    rng = np.random.default_rng(seed)
+    try:
+        raw = fetch_california_housing(as_frame=True)
+        df  = raw.frame.copy()
+    except Exception as e:
+        print(f"[Data] fetch_california_housing failed ({e}). Generating synthetic data …")
+        n = 20_640
+        med_inc = rng.uniform(0.5, 15.0, n)
+        df = pd.DataFrame({
+            "MedInc":      med_inc,
+            "HouseAge":    rng.uniform(1, 52, n),
+            "AveRooms":    rng.uniform(1, 10, n),
+            "AveBedrms":   rng.uniform(0.5, 3, n),
+            "Population":  rng.integers(3, 35_000, n).astype(float),
+            "AveOccup":    rng.uniform(1, 6, n),
+            "Latitude":    rng.uniform(32, 42, n),
+            "Longitude":   rng.uniform(-124, -114, n),
+            "MedHouseVal": (med_inc * 0.4 + rng.uniform(0.5, 3, n)).clip(0.15, 5.0),
+        })
+    df  = df.copy()
+    n   = len(df)
 
     # Distance to coast: approximate using Longitude (coast ~-124 to -117 at lat 37)
     df["distance_to_coast"] = np.abs(df["Longitude"] - (-120.5)) * 0.8 + rng.normal(0, 2, n)
@@ -107,21 +124,22 @@ def build_models() -> dict:
         "ElasticNet":       Pipeline([("scaler", StandardScaler()),
                                       ("model", ElasticNet(alpha=0.01, l1_ratio=0.5,
                                                            max_iter=10_000))]),
-        "RandomForest":     RandomForestRegressor(n_estimators=200, max_depth=12,
+        "RandomForest":     RandomForestRegressor(n_estimators=100, max_depth=10,
                                                    n_jobs=-1, random_state=42),
-        "GradientBoosting": GradientBoostingRegressor(n_estimators=200, max_depth=5,
-                                                       learning_rate=0.05, random_state=42),
+        "GradientBoosting": GradientBoostingRegressor(n_estimators=100, max_depth=4,
+                                                       learning_rate=0.1, random_state=42),
         "SVR":              Pipeline([("scaler", StandardScaler()),
-                                      ("model", SVR(kernel="rbf", C=10, epsilon=0.1))]),
+                                      ("model", SVR(kernel="rbf", C=10, epsilon=0.1,
+                                                    cache_size=500))]),
     }
     if HAS_XGB:
         models["XGBoost"] = xgb.XGBRegressor(
-            n_estimators=300, max_depth=6, learning_rate=0.05,
+            n_estimators=200, max_depth=5, learning_rate=0.1,
             subsample=0.8, colsample_bytree=0.8, random_state=42,
             verbosity=0, n_jobs=-1)
     if HAS_LGB:
         models["LightGBM"] = lgb.LGBMRegressor(
-            n_estimators=300, max_depth=6, learning_rate=0.05,
+            n_estimators=200, max_depth=5, learning_rate=0.1,
             subsample=0.8, colsample_bytree=0.8, random_state=42,
             verbose=-1, n_jobs=-1)
     return models
@@ -130,16 +148,27 @@ def build_models() -> dict:
 # ── 3. Cross-Validation Evaluation ───────────────────────────────────────────
 
 def evaluate_models(models: dict, X: pd.DataFrame, y: pd.Series,
-                    cv: int = 5) -> pd.DataFrame:
+                    cv: int = 3) -> pd.DataFrame:
     kf = KFold(n_splits=cv, shuffle=True, random_state=42)
     records = []
+    # SVR is O(n^2) - subsample for speed
+    SVR_SAMPLE = 5_000
+    svr_idx = np.random.RandomState(42).choice(len(X), min(SVR_SAMPLE, len(X)), replace=False)
+    X_svr = X.iloc[svr_idx]; y_svr = y.iloc[svr_idx]
     for name, model in models.items():
         print(f"  CV [{name}] …", end=" ", flush=True)
-        ypred_cv = cross_val_predict(model, X, y, cv=kf, n_jobs=-1)
-        mae   = mean_absolute_error(y, ypred_cv)
-        rmse  = np.sqrt(mean_squared_error(y, ypred_cv))
-        r2    = r2_score(y, ypred_cv)
-        mape  = np.mean(np.abs((y - ypred_cv) / (y + 1e-9))) * 100
+        if name == "SVR":
+            ypred_cv = cross_val_predict(model, X_svr, y_svr, cv=kf, n_jobs=1)
+            mae   = mean_absolute_error(y_svr, ypred_cv)
+            rmse  = np.sqrt(mean_squared_error(y_svr, ypred_cv))
+            r2    = r2_score(y_svr, ypred_cv)
+            mape  = np.mean(np.abs((y_svr - ypred_cv) / (y_svr + 1e-9))) * 100
+        else:
+            ypred_cv = cross_val_predict(model, X, y, cv=kf, n_jobs=-1)
+            mae   = mean_absolute_error(y, ypred_cv)
+            rmse  = np.sqrt(mean_squared_error(y, ypred_cv))
+            r2    = r2_score(y, ypred_cv)
+            mape  = np.mean(np.abs((y - ypred_cv) / (y + 1e-9))) * 100
         records.append({"Model": name, "MAE": mae, "RMSE": rmse,
                         "R2": r2, "MAPE_%": mape})
         print(f"R2={r2:.4f}  RMSE={rmse:.4f}")

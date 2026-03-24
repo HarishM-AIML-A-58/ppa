@@ -178,7 +178,7 @@ def reduce_dimensions(X: np.ndarray, y: np.ndarray) -> dict:
     }
 
     # t-SNE on PCA-reduced space (50 components → 2D)
-    tsne = TSNE(n_components=2, perplexity=30, random_state=42, n_iter=500)
+    tsne = TSNE(n_components=2, perplexity=30, random_state=42, max_iter=500)
     X_tsne = tsne.fit_transform(X_pca)
     results["tsne"] = {"X_2d": X_tsne}
 
@@ -201,7 +201,7 @@ def classify_subtypes(X_pca: np.ndarray, y: np.ndarray) -> dict:
 
     models = {
         "RandomForest":       RandomForestClassifier(n_estimators=100, max_depth=8, random_state=42, n_jobs=-1),
-        "LogisticRegression": LogisticRegression(max_iter=1000, C=1.0, multi_class="ovr", random_state=42),
+        "LogisticRegression": LogisticRegression(max_iter=1000, C=1.0, random_state=42),
         "SVM":                SVC(kernel="rbf", C=1.0, probability=True, random_state=42),
         "GradientBoosting":   GradientBoostingClassifier(n_estimators=50, max_depth=4, random_state=42),
     }

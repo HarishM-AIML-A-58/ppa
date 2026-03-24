@@ -127,12 +127,12 @@ def build_classifiers() -> dict:
         ("clf", LogisticRegression(class_weight="balanced", max_iter=1000,
                                    C=0.1, solver="lbfgs")),
     ])
-    rf = RandomForestClassifier(n_estimators=200, max_depth=12, class_weight="balanced",
+    rf = RandomForestClassifier(n_estimators=100, max_depth=10, class_weight="balanced",
                                 n_jobs=-1, random_state=42)
     mlp = Pipeline([
         ("scaler", StandardScaler()),
-        ("clf", MLPClassifier(hidden_layer_sizes=(128, 64, 32), activation="relu",
-                              max_iter=300, random_state=42, early_stopping=True,
+        ("clf", MLPClassifier(hidden_layer_sizes=(64, 32), activation="relu",
+                              max_iter=100, random_state=42, early_stopping=True,
                               validation_fraction=0.1)),
     ])
     clfs = {
@@ -142,13 +142,13 @@ def build_classifiers() -> dict:
     }
     if HAS_XGB:
         clfs["XGBoost"] = xgb.XGBClassifier(
-            n_estimators=300, max_depth=6, learning_rate=0.05,
+            n_estimators=150, max_depth=5, learning_rate=0.1,
             scale_pos_weight=int((1 - FRAUD_RATE) / FRAUD_RATE),
             subsample=0.8, colsample_bytree=0.8,
             eval_metric="aucpr", random_state=42, verbosity=0, n_jobs=-1)
     if HAS_LGB:
         clfs["LightGBM"] = lgb.LGBMClassifier(
-            n_estimators=300, max_depth=6, learning_rate=0.05,
+            n_estimators=150, max_depth=5, learning_rate=0.1,
             is_unbalance=True, subsample=0.8, colsample_bytree=0.8,
             random_state=42, verbose=-1, n_jobs=-1)
     return clfs
@@ -465,7 +465,7 @@ def main():
     print("=" * 65)
 
     # ── Data ──────────────────────────────────────────────────────────
-    df      = generate_fraud_dataset(n_legit=284_000)
+    df      = generate_fraud_dataset(n_legit=50_000)
     df      = feature_engineer(df)
     feature_cols = [c for c in df.columns if c not in ["Class"]]
     X = df[feature_cols]
@@ -475,10 +475,10 @@ def main():
         X, y, test_size=0.20, stratify=y, random_state=42)
 
     # ── Predictive: CV evaluation ──────────────────────────────────────
-    print("\n[Predictive] Stratified 5-fold CV with SMOTE …")
+    print("\n[Predictive] Stratified 3-fold CV with SMOTE …")
     clfs        = build_classifiers()
     eval_results = evaluate_classifiers(clfs, X_train, y_train,
-                                        use_smote=True, cv=5)
+                                        use_smote=True, cv=3)
 
     # ── Best model by AUC-ROC ─────────────────────────────────────────
     best_name = max(eval_results, key=lambda n: eval_results[n]["auc_roc"])
